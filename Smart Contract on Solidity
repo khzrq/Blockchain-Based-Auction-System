@@ -1,0 +1,69 @@
+//Smart Contract
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Auction {
+    // Variables for auction details
+    address public owner;
+    string public itemName;
+    uint public startingPrice;
+    uint public auctionEndTime;
+
+    // Bid structure and mapping
+    struct Bid {
+        address bidder;
+        uint amount;
+    }
+    mapping(address => Bid) public bids;
+
+    // Current highest bid
+    address public highestBidder;
+    uint public highestBid;
+
+    // Auction state
+    bool public ended;
+
+    // Events
+    event NewHighestBid(address indexed bidder, uint amount);
+    event AuctionEnded(address winner, uint winningBid);
+
+    // Constructor to initialize the auction
+    constructor(
+        string memory _itemName,
+        uint _startingPrice,
+        uint _durationMinutes
+    ) {
+        owner = msg.sender;
+        itemName = _itemName;
+        startingPrice = _startingPrice;
+        auctionEndTime = block.timestamp + (_durationMinutes * 1 minutes);
+        highestBid = _startingPrice;
+    }
+
+    // Place a bid
+    function placeBid() public payable {
+        // Ensure auction is still active
+        require(block.timestamp < auctionEndTime, "Auction has ended");
+        // Ensure bid is higher than current highest bid
+        require(msg.value > highestBid, "Bid amount must be higher than the current highest bid");
+
+        // Refund the previous highest bidder if there was one
+        if (highestBid > 0) {
+            payable(highestBidder).transfer(highestBid);
+        }
+
+        // Update the highest bid and bidder
+        highestBidder = msg.sender;
+        highestBid = msg.value;
+
+        // Record the new bid
+        bids[msg.sender] = Bid({
+            bidder: msg.sender,
+            amount: msg.value
+        });
+
+        // Emit the event for the new highest bid
+        emit NewHighestBid(msg.sender, msg.value);
+    }
+}
